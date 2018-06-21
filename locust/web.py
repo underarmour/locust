@@ -36,29 +36,22 @@ def index():
         slave_count = runners.locust_runner.slave_count
     else:
         slave_count = 0
-
-    if runners.locust_runner.host:
-        host = runners.locust_runner.host
-    elif len(runners.locust_runner.locust_classes) > 0:
-        host = runners.locust_runner.locust_classes[0].host
-    else:
-        host = None
     
     return render_template("index.html",
         state=runners.locust_runner.state,
         is_distributed=is_distributed,
         user_count=runners.locust_runner.user_count,
         version=version,
-        host=host
     )
 
 @app.route('/swarm', methods=["POST"])
 def swarm():
     assert request.method == "POST"
 
+    target_host = request.form["target_host"]
     locust_count = int(request.form["locust_count"])
     hatch_rate = float(request.form["hatch_rate"])
-    runners.locust_runner.start_hatching(locust_count, hatch_rate)
+    runners.locust_runner.start_hatching(target_host, locust_count, hatch_rate)
     return jsonify({'success': True, 'message': 'Swarming started'})
 
 @app.route('/stop')

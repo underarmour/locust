@@ -10,12 +10,6 @@
         <div class="top-content container">
             <img src="./static/img/logo.png?v={{ version }}" class="logo" />
             <div class="boxes">
-                <div class="top_box box_url">
-                    <div class="label">HOST</div>
-                    <div class="value" id="host_url">
-                        {{host}}
-                    </div>
-                </div>
                 <div class="top_box box_status">
                     <div class="label">STATUS</div>
                     <div class="value" id="status_text">
@@ -57,6 +51,8 @@
             <div class="padder">
                 <h2>Start new Locust swarm</h2>
                 <form action="./swarm" method="POST" id="swarm_form">
+                    <label for="target_host">Host to target</label>
+                    <input type="text" name="target_host" id="target_host" class="val" /><br>
                     <label for="locust_count">Number of users to simulate</label>
                     <input type="text" name="locust_count" id="locust_count" class="val" /><br>
                     <label for="hatch_rate">Hatch rate <span style="color:#8a8a8a;">(users spawned/second)</span></label>
@@ -74,6 +70,8 @@
             <div class="padder">
                 <h2>Change the locust count</h2>
                 <form action="./swarm" method="POST" id="edit_form">
+                    <label for="target_host">Host to target</label>
+                    <input type="text" name="target_host" id="target_host" class="val" /><br>
                     <label for="locust_count">Number of users to simulate</label>
                     <input type="text" name="locust_count" id="new_locust_count" class="val" /><br>
                     <label for="hatch_rate">Hatch rate <span style="color:#8a8a8a;">(users spawned/second)</span></label>
