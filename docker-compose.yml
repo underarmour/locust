@@ -1,0 +1,18 @@
+# SERVICES
+master:
+  build: .
+  command: locust -f /locust-tasks/tasks.py --master
+  ports:
+    - "8089:8089"
+    - "5557:5557"
+    - "5558:5558"
+  volumes:
+  - $PWD/tasks:/locust-tasks
+
+slave:
+  build: .
+  command: locust -f /locust-tasks/tasks.py --slave --master-host=master
+  links:
+  - master:master
+  volumes:
+  - $PWD/tasks:/locust-tasks
