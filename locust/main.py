@@ -34,13 +34,6 @@ def parse_options():
     parser = OptionParser(usage="locust [options] [LocustClass [LocustClass2 ... ]]")
 
     parser.add_option(
-        '-H', '--host',
-        dest="host",
-        default=None,
-        help="Host to load test in the following format: http://10.21.32.33"
-    )
-
-    parser.add_option(
         '--web-host',
         dest="web_host",
         default="",
