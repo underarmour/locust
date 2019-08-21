@@ -1,0 +1,194 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: plans-test-locust
+  namespace: nutrition-integ
+  labels:
+    service: plans-test-locust
+data:
+  tasks.py: |-
+    from locust import HttpLocust, TaskSet, task
+    import time
+
+    class CustomTasks(TaskSet):
+      @task
+      def createUser(self):
+        hdrs = {}
+        bdy = {}
+        response = self.client.post("/user-plans", json=bdy, headers=hdrs)
+        print(response.content)
+
+    class CustomLocust(HttpLocust):
+      task_set = CustomTasks
+      min_wait = 1000
+      max_wait = 3000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: plans-test-locust
+  namespace: nutrition-integ
+  labels:
+    chart: "locust-1.0.1"
+    service: plans-test-locust
+spec:
+  type: ClusterIP
+  ports:
+    - name: master-web
+      port: 80
+      targetPort: master-web
+      protocol: TCP
+    - name: master-p1
+      port: 5557
+      protocol: TCP
+      targetPort: master-p1
+    - name: master-p2
+      port: 5558
+      protocol: TCP
+      targetPort: master-p2
+  selector:
+    service: plans-test-locust
+    component: "master"
+  sessionAffinity: None
+---
+apiVersion: apps/v1beta2
+kind: Deployment
+metadata:
+  name: plans-test-locust-master
+  namespace: nutrition-integ
+  labels:
+    service: plans-test-locust
+    component: "master"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      service: plans-test-locust
+      component: "master"
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 1
+  template:
+    metadata:
+      namespace: nutrition-integ
+      labels:
+        service: plans-test-locust
+        component: "master"
+    spec:
+      imagePullSecrets:
+        - name: ua-digital-gcr-io-image-pull-secret
+      containers:
+        - name: locust
+          image: "gcr.io/ua-digital/github.com/underarmour/locust:4720712"
+          imagePullPolicy: Always
+          command:
+            - "locust"
+            - "-f"
+            - "/locust-tasks/tasks.py"
+            - "--master"
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+          ports:
+            - containerPort: 8089
+              name: master-web
+              protocol: TCP
+            - containerPort: 5557
+              name: master-p1
+              protocol: TCP
+            - containerPort: 5558
+              name: master-p2
+              protocol: TCP
+          volumeMounts:
+            - name: locust-tasks
+              mountPath: /locust-tasks/
+          livenessProbe:
+            periodSeconds: 30
+            httpGet:
+              path: /
+              port: 8089
+          readinessProbe:
+            periodSeconds: 30
+            httpGet:
+              path: /
+              port: 8089
+      volumes:
+        - name: "locust-tasks"
+          configMap:
+            name: plans-test-locust
+---
+apiVersion: apps/v1beta2
+kind: Deployment
+metadata:
+  name: plans-test-locust-worker
+  namespace: nutrition-integ
+  labels:
+    service: plans-test-locust
+    component: "worker"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      service: plans-test-locust
+      component: "worker"
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 0%
+      maxUnavailable: 100%
+  template:
+    metadata:
+      namespace: nutrition-integ
+      labels:
+        service: plans-test-locust
+        component: "worker"
+    spec:
+      imagePullSecrets:
+        - name: ua-digital-gcr-io-image-pull-secret
+      containers:
+        - name: locust
+          image: "gcr.io/ua-digital/github.com/underarmour/locust:4720712"
+          imagePullPolicy: Always
+          command:
+            - "locust"
+            - "-f"
+            - "/locust-tasks/tasks.py"
+            - "--slave"
+            - "--master-host=plans-test-locust"
+            - "--loglevel=DEBUG"
+          volumeMounts:
+            - name: locust-tasks
+              mountPath: /locust-tasks/
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+
+      restartPolicy: Always
+      volumes:
+        - name: "locust-tasks"
+          configMap:
+            name: plans-test-locust
+            defaultMode: 0755
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: plans-test-locust
+  namespace: nutrition-integ
+  labels:
+    service: plans-test-locust
+  annotations:
+    kubernetes.io/ingress.class: "nginx-internal"
+spec:
+  rules:
+    - host: plans-test-locust.uacf.io
+      http:
+        paths:
+          - backend:
+              serviceName: plans-test-locust
+              servicePort: 80
+            path: "/"
